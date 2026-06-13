@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hiregenie_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hiregenie
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    volumes:
+      - hiregenie_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hiregenie"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: hiregenie_backend
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: docker-dev-secret-key-change-this
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend,0.0.0.0
+
+      DB_NAME: hiregenie
+      DB_USER: postgres
+      DB_PASSWORD: root
+      DB_HOST: db
+      DB_PORT: "5432"
+
+      DATABASE_URL: postgresql://postgres:root@db:5432/hiregenie
+
+      FRONTEND_URL: http://localhost:3000
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
+      CSRF_TRUSTED_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
+
+      GOOGLE_CLIENT_ID: your-google-client-id.apps.googleusercontent.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: your-gemini-api-key
+      OPENAI_API_KEY: your-openai-api-key
+      ACCESS_TOKEN_MINUTES: "60"
+      REFRESH_TOKEN_DAYS: "7"
+    volumes:
+      - ./backend/media:/app/media
+      - ./backend/staticfiles:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: hiregenie_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  hiregenie_postgres_data:
