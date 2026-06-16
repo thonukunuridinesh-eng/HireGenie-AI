@@ -18,10 +18,16 @@ SECRET_KEY = env("SECRET_KEY", default="unsafe-dev-secret-key-change-this")
 
 DEBUG = env("DEBUG", default=True)
 
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+RENDER_EXTERNAL_HOSTNAME = env("RENDER_EXTERNAL_HOSTNAME", default="")
+
 ALLOWED_HOSTS = env.list(
     "ALLOWED_HOSTS",
     default=["localhost", "127.0.0.1"],
 )
+
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 DJANGO_APPS = [
@@ -137,6 +143,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
     default=[
+        FRONTEND_URL,
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
@@ -147,6 +154,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=[
+        FRONTEND_URL,
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
@@ -186,9 +194,6 @@ GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 AI_PROVIDER = env("AI_PROVIDER", default="gemini")
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
-
-
-FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024

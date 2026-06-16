@@ -15,6 +15,10 @@ function getStoredJson(key) {
 }
 
 function getErrorMessage(error, fallbackMessage = "Something went wrong") {
+  if (error.isConfigError) {
+    return error.message;
+  }
+
   if (!error.response) {
     return "Cannot reach the backend. Start the Django server on port 8000 and try again.";
   }

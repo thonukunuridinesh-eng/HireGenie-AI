@@ -1,7 +1,10 @@
 import axios from "axios";
 
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const isProductionApiMissing = import.meta.env.PROD && !configuredApiBaseUrl;
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+  configuredApiBaseUrl || "http://127.0.0.1:8000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,6 +15,14 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    if (isProductionApiMissing) {
+      const error = new Error(
+        "Production API URL is missing. Set VITE_API_BASE_URL in Vercel to your deployed Django backend URL, for example https://your-backend.onrender.com/api."
+      );
+      error.isConfigError = true;
+      return Promise.reject(error);
+    }
+
     const accessToken = localStorage.getItem("hiregenie_access_token");
 
     if (accessToken) {
