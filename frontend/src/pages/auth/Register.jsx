@@ -19,18 +19,55 @@ function Register() {
     password: "",
     target_role: "Python Full Stack Developer"
   });
+  const [errors, setErrors] = useState({});
 
   const handleChange = (event) => {
+    const { name, value } = event.target;
+
     setFormData((current) => ({
       ...current,
-      [event.target.name]: event.target.value
+      [name]: value
     }));
+
+    setErrors((current) => ({
+      ...current,
+      [name]: ""
+    }));
+  };
+
+  const validateForm = () => {
+    const nextErrors = {};
+
+    if (!formData.full_name.trim()) {
+      nextErrors.full_name = "Full name is required.";
+    }
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required.";
+    }
+
+    if (formData.password.length < 8) {
+      nextErrors.password = "Password must be at least 8 characters.";
+    }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const result = await register(formData);
+    if (!validateForm()) {
+      return;
+    }
+
+    const result = await register({
+      ...formData,
+      full_name: formData.full_name.trim(),
+      email: formData.email.trim().toLowerCase(),
+      target_role: formData.target_role.trim()
+    });
 
     if (result.success) {
       navigate("/dashboard");
@@ -67,6 +104,8 @@ function Register() {
               placeholder="Dinesh Thonukunuri"
               value={formData.full_name}
               onChange={handleChange}
+              error={errors.full_name}
+              autoComplete="name"
               required
             />
 
@@ -78,6 +117,8 @@ function Register() {
               placeholder="dinesh@example.com"
               value={formData.email}
               onChange={handleChange}
+              error={errors.email}
+              autoComplete="email"
               required
             />
 
@@ -88,6 +129,7 @@ function Register() {
               placeholder="Python Full Stack Developer"
               value={formData.target_role}
               onChange={handleChange}
+              autoComplete="organization-title"
             />
 
             <Input
@@ -98,6 +140,9 @@ function Register() {
               placeholder="Minimum 8 characters"
               value={formData.password}
               onChange={handleChange}
+              error={errors.password}
+              autoComplete="new-password"
+              minLength={8}
               required
             />
 

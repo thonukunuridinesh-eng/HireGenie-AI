@@ -69,12 +69,13 @@ def log_activity(user=None, module="core", action="", description="", metadata=N
     try:
         from apps.activities.models import ActivityLog
 
+        if not user or not user.is_authenticated:
+            return
+
         ActivityLog.objects.create(
-            user=user if user and user.is_authenticated else None,
-            module=module,
+            user=user,
             action=action,
             description=description,
-            metadata=metadata or {},
         )
 
     except Exception:

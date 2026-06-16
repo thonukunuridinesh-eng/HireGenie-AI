@@ -20,6 +20,7 @@ class Resume(TimeStampedModel):
         related_name="resumes"
     )
     title = models.CharField(max_length=255, blank=True, null=True)
+    target_role = models.CharField(max_length=120, blank=True, default="")
     file = models.FileField(upload_to=generate_unique_filename)
     raw_text = models.TextField(blank=True, null=True)
     status = models.CharField(

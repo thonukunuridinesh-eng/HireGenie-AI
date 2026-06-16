@@ -21,18 +21,49 @@ function Login() {
     email: "",
     password: ""
   });
+  const [errors, setErrors] = useState({});
 
   const handleChange = (event) => {
+    const { name, value } = event.target;
+
     setFormData((current) => ({
       ...current,
-      [event.target.name]: event.target.value
+      [name]: value
     }));
+
+    setErrors((current) => ({
+      ...current,
+      [name]: ""
+    }));
+  };
+
+  const validateForm = () => {
+    const nextErrors = {};
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required.";
+    }
+
+    if (!formData.password) {
+      nextErrors.password = "Password is required.";
+    }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const result = await login(formData);
+    if (!validateForm()) {
+      return;
+    }
+
+    const result = await login({
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password
+    });
 
     if (result.success) {
       navigate(redirectTo);
@@ -82,6 +113,8 @@ function Login() {
               placeholder="dinesh@example.com"
               value={formData.email}
               onChange={handleChange}
+              error={errors.email}
+              autoComplete="email"
               required
             />
 
@@ -93,6 +126,8 @@ function Login() {
               placeholder="Enter password"
               value={formData.password}
               onChange={handleChange}
+              error={errors.password}
+              autoComplete="current-password"
               required
             />
 

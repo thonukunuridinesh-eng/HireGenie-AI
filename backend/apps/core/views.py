@@ -66,7 +66,7 @@ class DashboardStatsView(APIView):
         if activity_manager:
             recent_activities = [
                 {
-                    "module": activity.module,
+                    "module": getattr(activity, "module", "activity"),
                     "action": activity.action,
                     "description": activity.description,
                     "created_at": activity.created_at,

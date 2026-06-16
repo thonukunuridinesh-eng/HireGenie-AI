@@ -14,9 +14,9 @@ function NotFound() {
           The page you are looking for does not exist or has been moved.
         </p>
 
-        <Link to="/">
-          <Button className="mt-8">Go Home</Button>
-        </Link>
+        <Button as={Link} to="/" className="mt-8">
+          Go Home
+        </Button>
       </div>
     </div>
   );

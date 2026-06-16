@@ -202,7 +202,7 @@ def generate_ats_pdf_bytes(report):
     pdf.drawString(50, y, f"Target Role: {report.resume.target_role or 'Not provided'}")
 
     y -= 25
-    pdf.drawString(50, y, f"ATS Score: {report.score}/100")
+    pdf.drawString(50, y, f"ATS Score: {report.ats_score}/100")
 
     y -= 40
 

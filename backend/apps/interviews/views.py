@@ -1,11 +1,11 @@
-import logging
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from apps.core.utils import error_response, success_response
 from apps.activities.models import ActivityLog
-from apps.interviews.models import InterviewSession, InterviewMessage
+from apps.core.utils import error_response, success_response
+from apps.interviews.models import InterviewQuestion, InterviewSession
 from apps.interviews.serializers import (
     InterviewSessionSerializer,
     StartInterviewSerializer,
@@ -13,14 +13,15 @@ from apps.interviews.serializers import (
 )
 from apps.interviews.services import evaluate_answer, generate_interview_questions
 
-logger = logging.getLogger(__name__)
 
 class InterviewSessionViewSet(viewsets.ModelViewSet):
     serializer_class = InterviewSessionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return InterviewSession.objects.filter(user=self.request.user).order_by("-created_at")
+        return InterviewSession.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
 
     @action(detail=False, methods=["post"])
     def start(self, request):
@@ -32,36 +33,28 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Create master session using exact model attributes
         session = InterviewSession.objects.create(
             user=request.user,
-            job_title=serializer.validated_data["job_title"],
-            job_description=serializer.validated_data["job_description"],
-            resume_id=serializer.validated_data["resume_id"],
-            status="active",
-        )
-
-        # Pull AI questions from your service layer wrapper
-        questions = generate_interview_questions(
-            target_role=session.job_title,
+            target_role=serializer.validated_data["target_role"],
             interview_type=serializer.validated_data["interview_type"],
             difficulty=serializer.validated_data["difficulty"],
+            status="started",
         )
 
-        # Store generated questions chronologically as system context prompts
-        for q in questions:
-            InterviewMessage.objects.create(
-                session=session,
-                sender="system",
-                message_text=f"Question: {q}"
-            )
+        questions = generate_interview_questions(
+            target_role=session.target_role,
+            interview_type=session.interview_type,
+            difficulty=session.difficulty,
+        )
 
-        # Audit track using the active ActivityLog setup
+        for question in questions:
+            InterviewQuestion.objects.create(session=session, question=question)
+
         ActivityLog.objects.create(
             user=request.user,
-            action="mock_interview_started",
-            description=f"Session for {session.job_title} started.",
-            ip_address=request.META.get('REMOTE_ADDR')
+            action="Mock interview started",
+            description=f"{session.target_role} interview session started.",
+            ip_address=request.META.get("REMOTE_ADDR"),
         )
 
         return success_response(
@@ -82,43 +75,41 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        answer_text = serializer.validated_data["answer"]
+        try:
+            question = session.questions.get(
+                id=serializer.validated_data["question_id"]
+            )
+        except InterviewQuestion.DoesNotExist:
+            return error_response(
+                message="Question not found for this interview session.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
-        # Log candidate input
-        InterviewMessage.objects.create(
-            session=session,
-            sender="candidate",
-            message_text=answer_text
-        )
+        answer_text = serializer.validated_data["answer"].strip()
 
-        # Find the latest unanswered question prompt string inside the message log
-        last_question = session.messages.filter(sender="system").last()
-        question_text = last_question.message_text.replace("Question: ", "") if last_question else "General interview inquiry"
-
-        # Evaluate performance heuristics
         result = evaluate_answer(
-            question=question_text,
+            question=question.question,
             answer=answer_text,
-            target_role=session.job_title,
+            target_role=session.target_role,
         )
 
-        # Append evaluation details back into the tracking loop
-        InterviewMessage.objects.create(
-            session=session,
-            sender="ai",
-            message_text=f"Feedback: {result['feedback']}"
-        )
+        question.answer = answer_text
+        question.ai_feedback = result["feedback"]
+        question.score = result["score"]
+        question.save(update_fields=["answer", "ai_feedback", "score", "updated_at"])
 
-        # Adjust session stats incrementally
-        session.overall_score = result["score"]
-        session.feedback = result["feedback"]
-        session.save(update_fields=["overall_score", "feedback"])
+        answered_scores = list(
+            session.questions.exclude(answer="").values_list("score", flat=True)
+        )
+        session.score = round(sum(answered_scores) / len(answered_scores))
+        session.overall_feedback = result["feedback"]
+        session.save(update_fields=["score", "overall_feedback", "updated_at"])
 
         ActivityLog.objects.create(
             user=request.user,
-            action="interview_answer_evaluated",
+            action="Interview answer evaluated",
             description=f"Answer evaluated with score {result['score']}/100.",
-            ip_address=request.META.get('REMOTE_ADDR')
+            ip_address=request.META.get("REMOTE_ADDR"),
         )
 
         return success_response(
@@ -130,24 +121,42 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         session = self.get_object()
         session.status = "completed"
-        
-        if not session.overall_score:
-            session.overall_score = 0
-            
-        if session.overall_score >= 80:
-            session.feedback = f"Excellent performance. You are completely job-ready!\n\nDetails: {session.feedback}"
-        elif session.overall_score >= 60:
-            session.feedback = f"Good progress. Focus on refining architectural details.\n\nDetails: {session.feedback}"
+        session.completed_at = timezone.now()
+
+        feedback_details = session.overall_feedback or (
+            "Complete more answers to receive detailed feedback."
+        )
+
+        if session.score >= 80:
+            session.overall_feedback = (
+                "Excellent performance. You are close to job-ready.\n\n"
+                f"Details: {feedback_details}"
+            )
+        elif session.score >= 60:
+            session.overall_feedback = (
+                "Good progress. Focus on clearer project examples and technical depth.\n\n"
+                f"Details: {feedback_details}"
+            )
         else:
-            session.feedback = f"Needs more review. Go over fundamental core items.\n\nDetails: {session.feedback}"
-            
-        session.save(update_fields=["status", "feedback"])
+            session.overall_feedback = (
+                "Keep practicing. Add specific examples, role keywords, and measurable impact.\n\n"
+                f"Details: {feedback_details}"
+            )
+
+        session.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "overall_feedback",
+                "updated_at",
+            ]
+        )
 
         ActivityLog.objects.create(
             user=request.user,
-            action="mock_interview_completed",
-            description=f"Interview session final score: {session.overall_score}/100.",
-            ip_address=request.META.get('REMOTE_ADDR')
+            action="Mock interview completed",
+            description=f"Interview session final score: {session.score}/100.",
+            ip_address=request.META.get("REMOTE_ADDR"),
         )
 
         return success_response(

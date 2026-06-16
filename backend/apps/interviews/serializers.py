@@ -1,52 +1,66 @@
 from rest_framework import serializers
-from .models import InterviewSession, InterviewMessage
 
-class InterviewMessageSerializer(serializers.ModelSerializer):
-    sender_display = serializers.CharField(source='get_sender_display', read_only=True)
+from apps.interviews.models import InterviewQuestion, InterviewSession
 
+
+class InterviewQuestionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = InterviewMessage
+        model = InterviewQuestion
         fields = [
             "id",
-            "sender",
-            "sender_display",
-            "message_text",
-            "latency_ms",
+            "question",
+            "answer",
+            "ai_feedback",
+            "score",
             "created_at",
         ]
-        read_only_fields = ["id", "sender_display", "created_at"]
+        read_only_fields = ["id", "ai_feedback", "score", "created_at"]
+
 
 class InterviewSessionSerializer(serializers.ModelSerializer):
-    messages = InterviewMessageSerializer(many=True, read_only=True)
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    questions = InterviewQuestionSerializer(many=True, read_only=True)
 
     class Meta:
         model = InterviewSession
         fields = [
             "id",
-            "user",
-            "user_email",
-            "resume",
-            "job_title",
-            "job_description",
+            "interview_type",
+            "target_role",
+            "difficulty",
+            "score",
             "status",
-            "status_display",
-            "overall_score",
-            "feedback",
-            "metrics",
-            "messages",
+            "overall_feedback",
+            "questions",
+            "started_at",
+            "completed_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "user", "status", "overall_score", "feedback", "metrics", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "score",
+            "status",
+            "overall_feedback",
+            "questions",
+            "started_at",
+            "completed_at",
+            "created_at",
+            "updated_at",
+        ]
+
 
 class StartInterviewSerializer(serializers.Serializer):
-    job_title = serializers.CharField(max_length=255, required=True)
-    job_description = serializers.CharField(required=False, allow_blank=True, default="")
-    resume_id = serializers.IntegerField(required=False, allow_null=True, default=None)
-    difficulty = serializers.ChoiceField(choices=['easy', 'medium', 'hard'], default='medium')
-    interview_type = serializers.ChoiceField(choices=['technical', 'hr', 'mixed'], default='mixed')
+    target_role = serializers.CharField(max_length=120)
+    difficulty = serializers.ChoiceField(
+        choices=["easy", "medium", "hard"],
+        default="medium",
+    )
+    interview_type = serializers.ChoiceField(
+        choices=["technical", "hr", "mixed"],
+        default="mixed",
+    )
+
 
 class SubmitAnswerSerializer(serializers.Serializer):
+    question_id = serializers.IntegerField()
     answer = serializers.CharField(required=True)

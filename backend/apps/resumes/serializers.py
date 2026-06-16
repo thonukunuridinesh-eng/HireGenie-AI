@@ -4,6 +4,9 @@ from apps.resumes.models import ATSReport, Resume
 
 
 class ATSReportSerializer(serializers.ModelSerializer):
+    score = serializers.IntegerField(source="ats_score", read_only=True)
+    ai_summary = serializers.CharField(source="summary", read_only=True)
+
     class Meta:
         model = ATSReport
         fields = [
@@ -20,6 +23,9 @@ class ATSReportSerializer(serializers.ModelSerializer):
 
 
 class ResumeSerializer(serializers.ModelSerializer):
+    pdf_file = serializers.FileField(source="file", read_only=True)
+    extracted_text = serializers.CharField(source="raw_text", read_only=True)
+    parsed_skills = serializers.SerializerMethodField()
     ats_report = ATSReportSerializer(read_only=True)
 
     class Meta:
@@ -38,6 +44,7 @@ class ResumeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "pdf_file",
             "extracted_text",
             "parsed_skills",
             "status",
@@ -46,8 +53,19 @@ class ResumeSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def get_parsed_skills(self, obj):
+        report = getattr(obj, "ats_report", None)
+        return report.extracted_skills if report else []
+
 
 class ResumeUploadSerializer(serializers.ModelSerializer):
+    pdf_file = serializers.FileField(write_only=True)
+    target_role = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+    )
+
     class Meta:
         model = Resume
         fields = ["title", "pdf_file", "target_role"]
@@ -60,3 +78,7 @@ class ResumeUploadSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("PDF size must be less than 5 MB.")
 
         return value
+
+    def create(self, validated_data):
+        pdf_file = validated_data.pop("pdf_file")
+        return Resume.objects.create(file=pdf_file, **validated_data)

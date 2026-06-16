@@ -12,6 +12,7 @@ function Topbar({ onMenuClick }) {
         <button
           onClick={onMenuClick}
           className="rounded-2xl border border-slate-200 p-3 text-slate-700 dark:border-white/10 dark:text-white lg:hidden"
+          aria-label="Open sidebar"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -27,7 +28,10 @@ function Topbar({ onMenuClick }) {
         <div className="ml-auto flex items-center gap-3">
           <ThemeToggle />
 
-          <button className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white">
+          <button
+            className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            aria-label="Notifications"
+          >
             <Bell className="h-5 w-5" />
           </button>
 

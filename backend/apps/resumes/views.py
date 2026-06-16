@@ -1,10 +1,10 @@
 from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
-from apps.core.utils import log_activity, success_response
+from apps.core.utils import error_response, log_activity, success_response
 from apps.resumes.models import ATSReport, Resume
 from apps.resumes.serializers import ResumeSerializer, ResumeUploadSerializer
 from apps.resumes.services import (
@@ -17,7 +17,7 @@ from apps.resumes.services import (
 
 class ResumeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         return Resume.objects.filter(user=self.request.user).order_by("-created_at")
@@ -42,46 +42,65 @@ class ResumeViewSet(viewsets.ModelViewSet):
     def analyze(self, request, pk=None):
         resume = self.get_object()
 
-        resume.status = "analyzing"
+        resume.status = "parsing"
         resume.save(update_fields=["status"])
 
-        extracted_text = extract_pdf_text(resume.pdf_file.path)
-        resume.extracted_text = extracted_text
+        try:
+            extracted_text = extract_pdf_text(resume.file.path)
+            resume.raw_text = extracted_text
 
-        ats_data = calculate_ats_score(
-            resume_text=extracted_text,
-            target_role=resume.target_role,
-        )
+            ats_data = calculate_ats_score(
+                resume_text=extracted_text,
+                target_role=resume.target_role,
+            )
 
-        suggestions = get_ai_resume_suggestions(
-            resume_text=extracted_text,
-            target_role=resume.target_role,
-            ats_data=ats_data,
-        )
+            suggestions = get_ai_resume_suggestions(
+                resume_text=extracted_text,
+                target_role=resume.target_role,
+                ats_data=ats_data,
+            )
 
-        report, _ = ATSReport.objects.update_or_create(
-            resume=resume,
-            defaults={
-                "score": ats_data["score"],
-                "matched_keywords": ats_data["matched_keywords"],
-                "missing_keywords": ats_data["missing_keywords"],
-                "strengths": ats_data["strengths"],
-                "weaknesses": ats_data["weaknesses"],
-                "suggestions": suggestions,
-                "ai_summary": f"Resume scored {ats_data['score']} out of 100.",
-            },
-        )
+            report, _ = ATSReport.objects.update_or_create(
+                resume=resume,
+                defaults={
+                    "ats_score": ats_data["score"],
+                    "extracted_skills": ats_data["matched_keywords"],
+                    "matched_keywords": ats_data["matched_keywords"],
+                    "missing_keywords": ats_data["missing_keywords"],
+                    "strengths": ats_data["strengths"],
+                    "weaknesses": ats_data["weaknesses"],
+                    "suggestions": suggestions,
+                    "summary": f"Resume scored {ats_data['score']} out of 100.",
+                },
+            )
 
-        resume.parsed_skills = ats_data["matched_keywords"]
-        resume.status = "completed"
-        resume.save()
+            resume.ai_score = ats_data["score"]
+            resume.ai_feedback = suggestions
+            resume.status = "parsed"
+            resume.save(
+                update_fields=[
+                    "raw_text",
+                    "ai_score",
+                    "ai_feedback",
+                    "status",
+                    "updated_at",
+                ]
+            )
+        except Exception as exc:
+            resume.status = "failed"
+            resume.save(update_fields=["status", "updated_at"])
+            return error_response(
+                message="Resume analysis failed.",
+                errors={"detail": str(exc)},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         log_activity(
             user=request.user,
             module="resume",
             action="Resume analyzed",
-            description=f"ATS score generated: {report.score}/100",
-            metadata={"resume_id": resume.id, "score": report.score},
+            description=f"ATS score generated: {report.ats_score}/100",
+            metadata={"resume_id": resume.id, "score": report.ats_score},
         )
 
         return success_response(

@@ -2,15 +2,20 @@ import { Loader2 } from "lucide-react";
 
 function Button({
   children,
+  as: Component = "button",
   type = "button",
   variant = "primary",
   loading = false,
   className = "",
   disabled = false,
+  onClick,
+  tabIndex,
   ...props
 }) {
+  const isDisabled = disabled || loading;
+  const isNativeButton = Component === "button";
   const baseClasses =
-    "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400";
 
   const variants = {
     primary:
@@ -23,16 +28,37 @@ function Button({
       "bg-rose-500 text-white hover:bg-rose-600"
   };
 
+  const handleClick = (event) => {
+    if (isDisabled && !isNativeButton) {
+      event.preventDefault();
+      return;
+    }
+
+    onClick?.(event);
+  };
+
+  const componentProps = isNativeButton
+    ? {
+        type,
+        disabled: isDisabled
+      }
+    : {
+        "aria-disabled": isDisabled || undefined,
+        tabIndex: isDisabled ? -1 : tabIndex
+      };
+
   return (
-    <button
-      type={type}
-      disabled={disabled || loading}
-      className={`${baseClasses} ${variants[variant]} ${className}`}
+    <Component
+      className={`${baseClasses} ${variants[variant]} ${
+        isDisabled ? "cursor-not-allowed opacity-60" : ""
+      } ${className}`}
+      onClick={handleClick}
+      {...componentProps}
       {...props}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {children}
-    </button>
+    </Component>
   );
 }
 

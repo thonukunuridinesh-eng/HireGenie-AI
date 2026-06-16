@@ -39,17 +39,17 @@ function Navbar() {
           <ThemeToggle />
 
           {isAuthenticated ? (
-            <Link to="/dashboard">
-              <Button>Open Dashboard</Button>
-            </Link>
+            <Button as={Link} to="/dashboard">
+              Open Dashboard
+            </Button>
           ) : (
             <>
-              <Link to="/login">
-                <Button variant="ghost">Login</Button>
-              </Link>
-              <Link to="/register">
-                <Button>Start Free</Button>
-              </Link>
+              <Button as={Link} to="/login" variant="ghost">
+                Login
+              </Button>
+              <Button as={Link} to="/register">
+                Start Free
+              </Button>
             </>
           )}
         </div>
@@ -57,13 +57,19 @@ function Navbar() {
         <button
           onClick={() => setOpen((current) => !current)}
           className="rounded-2xl border border-white/10 bg-white/10 p-3 text-white lg:hidden"
+          aria-controls="mobile-navigation"
+          aria-expanded={open}
+          aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         >
           {open ? <X /> : <Menu />}
         </button>
       </nav>
 
       {open && (
-        <div className="border-t border-white/10 bg-slate-950 px-4 py-5 lg:hidden">
+        <div
+          id="mobile-navigation"
+          className="border-t border-white/10 bg-slate-950 px-4 py-5 lg:hidden"
+        >
           <div className="flex flex-col gap-4">
             {navLinks.map((link) => (
               <a
@@ -78,9 +84,9 @@ function Navbar() {
 
             <div className="flex items-center gap-3 pt-3">
               <ThemeToggle />
-              <Link to={isAuthenticated ? "/dashboard" : "/login"}>
-                <Button>{isAuthenticated ? "Dashboard" : "Login"}</Button>
-              </Link>
+              <Button as={Link} to={isAuthenticated ? "/dashboard" : "/login"}>
+                {isAuthenticated ? "Dashboard" : "Login"}
+              </Button>
             </div>
           </div>
         </div>

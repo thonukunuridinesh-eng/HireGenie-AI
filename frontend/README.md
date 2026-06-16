@@ -1,16 +1,33 @@
-# React + Vite
+# HireGenie AI Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for HireGenie AI, an AI-assisted career preparation
+workspace for students.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Public landing page with product overview, pricing, and FAQ sections.
+- Authentication pages for login, registration, and password recovery.
+- Protected dashboard shell with sidebar navigation and top search bar.
+- Student modules for resume analysis, resume building, mock interviews,
+  coding practice, aptitude tests, roadmaps, jobs, certificates, and analytics.
+- Tailwind CSS design system with dark/light theme support.
 
-## React Compiler
+## Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+npm run build
+```
 
-## Expanding the ESLint configuration
+## Environment
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Create a `.env` file when local configuration is needed:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+```
+
+The app defaults to the backend URL configured in `src/api/axios.js` when
+environment values are not provided.

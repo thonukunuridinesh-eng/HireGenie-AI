@@ -15,10 +15,11 @@ function getStoredJson(key) {
 }
 
 function getErrorMessage(error, fallbackMessage = "Something went wrong") {
-  const data = error.response?.data;
+  if (!error.response) {
+    return "Cannot reach the backend. Start the Django server on port 8000 and try again.";
+  }
 
-  console.log("Backend error status:", error.response?.status);
-  console.log("Backend error data:", data);
+  const data = error.response?.data;
 
   if (!data) {
     return fallbackMessage;
@@ -31,17 +32,21 @@ function getErrorMessage(error, fallbackMessage = "Something went wrong") {
   if (data.errors) {
     const firstKey = Object.keys(data.errors)[0];
     const firstError = data.errors[firstKey];
+    const fieldName =
+      firstKey === "non_field_errors"
+        ? "Error"
+        : firstKey.replaceAll("_", " ");
 
     if (Array.isArray(firstError)) {
-      return `${firstKey}: ${firstError[0]}`;
+      return `${fieldName}: ${firstError[0]}`;
     }
 
     if (typeof firstError === "string") {
-      return `${firstKey}: ${firstError}`;
+      return `${fieldName}: ${firstError}`;
     }
 
     if (typeof firstError === "object") {
-      return `${firstKey}: ${JSON.stringify(firstError)}`;
+      return `${fieldName}: ${JSON.stringify(firstError)}`;
     }
   }
 
@@ -96,11 +101,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
 
     try {
-      console.log("Sending register data:", formData);
-
       const response = await api.post("/auth/register/", formData);
-
-      console.log("Register success:", response.data);
 
       saveAuthData(response.data.data);
 
@@ -108,13 +109,11 @@ export function AuthProvider({ children }) {
 
       return { success: true };
     } catch (error) {
-      console.log("Register error full:", error);
-
       const message = getErrorMessage(error, "Registration failed");
 
       toast.error(message);
 
-      return { success: false };
+      return { success: false, message };
     } finally {
       setLoading(false);
     }
@@ -124,11 +123,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
 
     try {
-      console.log("Sending login data:", formData);
-
       const response = await api.post("/auth/login/", formData);
-
-      console.log("Login success:", response.data);
 
       saveAuthData(response.data.data);
 
@@ -136,13 +131,11 @@ export function AuthProvider({ children }) {
 
       return { success: true };
     } catch (error) {
-      console.log("Login error full:", error);
-
       const message = getErrorMessage(error, "Login failed");
 
       toast.error(message);
 
-      return { success: false };
+      return { success: false, message };
     } finally {
       setLoading(false);
     }
@@ -171,7 +164,7 @@ export function AuthProvider({ children }) {
 
       toast.error(message);
 
-      return { success: false };
+      return { success: false, message };
     } finally {
       setLoading(false);
     }

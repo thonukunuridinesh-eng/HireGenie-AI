@@ -83,9 +83,19 @@ class GoogleLoginView(APIView):
             email = token_info.get("email")
             if not email:
                 return error_response(message="Google account email not found.", status_code=status.HTTP_400_BAD_REQUEST)
-            user, _ = User.objects.get_or_create(email=email, defaults={'username': email.split('@')[0]})
+            user, _ = User.objects.get_or_create(
+                email=email,
+                defaults={"username": email.split("@")[0]},
+            )
             tokens = get_tokens_for_user(user)
-            return success_response(message="Google login successful.", data={"tokens": tokens})
+            return success_response(
+                message="Google login successful.",
+                data={
+                    "user": UserSerializer(user).data,
+                    "profile": ProfileSerializer(user.profile).data,
+                    "tokens": tokens,
+                },
+            )
         except ValueError:
             return error_response(message="Invalid Google token.", status_code=status.HTTP_400_BAD_REQUEST)
 
