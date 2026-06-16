@@ -20,6 +20,10 @@ function getErrorMessage(error, fallbackMessage = "Something went wrong") {
   }
 
   if (!error.response) {
+    if (import.meta.env.PROD) {
+      return "Cannot reach the deployed Django backend. Check that VITE_API_BASE_URL in Vercel points to a public backend URL ending with /api, and that backend CORS allows this Vercel domain.";
+    }
+
     return "Cannot reach the backend. Start the Django server on port 8000 and try again.";
   }
 

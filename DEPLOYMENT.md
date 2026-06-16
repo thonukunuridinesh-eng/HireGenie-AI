@@ -54,3 +54,21 @@ VITE_API_BASE_URL=https://your-backend-host.onrender.com/api
 
 Then redeploy the frontend. Vite reads environment variables at build time, so
 changing `VITE_API_BASE_URL` requires a new deployment.
+
+## Common Error
+
+If Vercel shows a backend connection error during registration, check these:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-host.onrender.com/api
+```
+
+Do not use these in Vercel:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+`localhost` and `127.0.0.1` only work on your laptop. Production needs the public
+backend URL.
